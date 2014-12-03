@@ -90,6 +90,7 @@ static inline int blk_trace_init_sysfs(struct device *dev)
 
 struct blk_req_table {
 	pid_t pid;
+	pid_t tgid;
 	sector_t sector;
 	int count;
 	int temp_file;
