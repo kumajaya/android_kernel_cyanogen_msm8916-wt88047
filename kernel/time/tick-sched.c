@@ -1252,6 +1252,9 @@ void tick_cancel_sched_timer(int cpu)
 # endif
 
 	memset(ts, 0, sizeof(*ts));
+	ts->inidle = 0;
+	ts->tick_stopped = 0;
+	ts->idle_active = 0;
 }
 #endif
 
