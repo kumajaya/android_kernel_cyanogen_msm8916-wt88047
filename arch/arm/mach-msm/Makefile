@@ -72,3 +72,4 @@ obj-$(CONFIG_ARCH_MSM8974) += msm_mpmctr.o
 
 obj-$(CONFIG_PERFMAP) += perfmap.o
 obj-$(CONFIG_FORCE_FAST_CHARGE) += fastchg.o
+obj-$(CONFIG_ALUCARD_HOTPLUG) += alucard_hotplug.o

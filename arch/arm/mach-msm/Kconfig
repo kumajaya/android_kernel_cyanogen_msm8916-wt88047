@@ -1051,4 +1051,9 @@ config FSM9900_GSM_NL
 	  The serial port connection can be established to communicate with the
 	  GSM NL module.
 
+config ALUCARD_HOTPLUG
+	bool "Enable alucard-hotplug cpu hotplug driver"
+	default y
+	help
+	  Alucard-hotplug cpu hotplug driver for ARM SOCs
 endif
