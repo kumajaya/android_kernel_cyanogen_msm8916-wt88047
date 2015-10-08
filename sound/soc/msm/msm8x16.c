@@ -1461,7 +1461,7 @@ static void *def_msm8x16_wcd_mbhc_cal(void)
 	btn_high[3] = 500;
 	btn_low[4] = 137;
 	btn_high[4] = 137;
-#elif defined(CONFIG_MACH_CRACKLING)
+#elif defined(CONFIG_MACH_CRACKLING) || defined(CONFIG_MACH_WT88047)
 	btn_low[0] = 75;
 	btn_high[0] = 75;
 	btn_low[1] = 100;
