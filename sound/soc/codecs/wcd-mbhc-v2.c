@@ -2100,7 +2100,11 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		}
 		ret = snd_jack_set_key(mbhc->button_jack.jack,
 				       SND_JACK_BTN_1,
+#ifdef CONFIG_MACH_WT88047
+				       KEY_VOLUMEUP);
+#else
 				       KEY_VOICECOMMAND);
+#endif
 		if (ret) {
 			pr_err("%s: Failed to set code for btn-1:%d\n",
 					__func__, ret);
@@ -2108,12 +2112,17 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 		}
 		ret = snd_jack_set_key(mbhc->button_jack.jack,
 				       SND_JACK_BTN_2,
+#ifdef CONFIG_MACH_WT88047
+				       KEY_VOLUMEDOWN);
+#else
 				       KEY_VOLUMEUP);
+#endif
 		if (ret) {
 			pr_err("%s: Failed to set code for btn-2:%d\n",
 				__func__, ret);
 			return ret;
 		}
+#ifndef CONFIG_MACH_WT88047
 		ret = snd_jack_set_key(mbhc->button_jack.jack,
 				       SND_JACK_BTN_3,
 				       KEY_VOLUMEDOWN);
@@ -2122,6 +2131,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_codec *codec,
 				__func__, ret);
 			return ret;
 		}
+#endif
 
 		INIT_DELAYED_WORK(&mbhc->mbhc_firmware_dwork,
 				  wcd_mbhc_fw_read);
