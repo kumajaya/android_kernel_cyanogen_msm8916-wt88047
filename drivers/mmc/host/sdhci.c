@@ -774,6 +774,7 @@ static void sdhci_adma_table_post(struct sdhci_host *host,
 			     direction);
 }
 
+#ifndef CONFIG_MACH_WT88047
 static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 {
 	u8 count;
@@ -839,6 +840,7 @@ static u8 sdhci_calc_timeout(struct sdhci_host *host, struct mmc_command *cmd)
 
 	return count;
 }
+#endif
 
 static void sdhci_set_transfer_irqs(struct sdhci_host *host)
 {
@@ -872,7 +874,11 @@ static void sdhci_prepare_data(struct sdhci_host *host, struct mmc_command *cmd)
 	WARN_ON(host->data);
 
 	if (data || (cmd->flags & MMC_RSP_BUSY)) {
+#ifdef CONFIG_MACH_WT88047
+		count = 0xE;
+#else
 		count = sdhci_calc_timeout(host, cmd);
+#endif
 		sdhci_writeb(host, count, SDHCI_TIMEOUT_CONTROL);
 	}
 
@@ -1312,7 +1318,11 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 		host->ops->set_clock(host, clock);
 		spin_lock_irqsave(&host->lock, flags);
 		if (host->quirks & SDHCI_QUIRK_NONSTANDARD_CLOCK)
+#ifndef CONFIG_MACH_WT88047
 			goto ret;
+#else
+			goto out;
+#endif
 	}
 
 	if (host->clock)
@@ -1415,6 +1425,15 @@ clock_set:
 
 out:
 	host->clock = clock;
+#ifdef CONFIG_MACH_WT88047
+	/* update timeout_clk and max_discard_to once the SDCLK is changed */
+	if (host->quirks & SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK && clock) {
+		host->timeout_clk = host->mmc->actual_clock ?
+					host->mmc->actual_clock / 1000 :
+					host->clock / 1000;
+		host->mmc->max_discard_to = (1 << 27) / host->timeout_clk;
+	}
+#endif
 ret:
 	spin_unlock_irqrestore(&host->lock, flags);
 }
@@ -3685,6 +3704,24 @@ int sdhci_add_host(struct sdhci_host *host)
 	} else
 		mmc->f_min = host->max_clk / SDHCI_MAX_DIV_SPEC_200;
 
+#ifdef CONFIG_MACH_WT88047
+	if (!(host->quirks & SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK)) {
+		host->timeout_clk = (caps[0] & SDHCI_TIMEOUT_CLK_MASK) >>
+				SDHCI_TIMEOUT_CLK_SHIFT;
+		if (host->timeout_clk == 0) {
+			if (host->ops->get_timeout_clock) {
+				host->timeout_clk =
+					host->ops->get_timeout_clock(host);
+			} else {
+				pr_err("%s: Hardware doesn't specify timeout"
+				       "clock frequency.\n", mmc_hostname(mmc));
+				return -ENODEV;
+			}
+		}
+		if (caps[0] & SDHCI_TIMEOUT_CLK_UNIT)
+			host->timeout_clk *= 1000;
+	}
+#else
 	host->timeout_clk =
 		(caps[0] & SDHCI_TIMEOUT_CLK_MASK) >> SDHCI_TIMEOUT_CLK_SHIFT;
 	if (host->timeout_clk == 0) {
@@ -3702,6 +3739,7 @@ int sdhci_add_host(struct sdhci_host *host)
 
 	if (host->quirks & SDHCI_QUIRK_DATA_TIMEOUT_USES_SDCLK)
 		host->timeout_clk = mmc->f_max / 1000;
+#endif
 
 	if (!(host->quirks2 & SDHCI_QUIRK2_USE_MAX_DISCARD_SIZE))
 		mmc->max_discard_to = (1 << 27) / host->timeout_clk;
