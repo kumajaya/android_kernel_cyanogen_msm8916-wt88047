@@ -360,7 +360,7 @@ static void hotplug_start(void)
 	if (num_online_cpus() > 1) {
 		delay -= jiffies % delay;
 	}
-	INIT_DELAYED_WORK_DEFERRABLE(&alucard_hotplug_work, hotplug_work_fn);
+	INIT_DEFERRABLE_WORK(&alucard_hotplug_work, hotplug_work_fn);
 	queue_delayed_work_on(0, system_wq,
 				&alucard_hotplug_work,
 				delay);
@@ -727,10 +727,10 @@ static int __init alucard_hotplug_init(void)
 		{652800, 1190400},
 		{652800, 0}
 #else
-		{0, 1242000},
-		{810000, 1566000},
-		{918000, 1674000},
-		{1026000, 0}
+		{0, 1094400},
+		{800000, 998400},
+		{800000, 998400},
+		{800000, 0}
 #endif
 	};
 	unsigned int hotplug_load[NR_CPUS][2] = {
