@@ -247,6 +247,12 @@ void mdp3_calc_dma_res(struct mdss_panel_info *panel_info, u64 *clk_rate,
 		u64 *ab, u64 *ib, uint32_t bpp);
 
 
+u64 mdp3_clk_round_off(u64 clk_rate);
+
+void mdp3_calc_dma_res(struct mdss_panel_info *panel_info, u64 *clk_rate,
+		u64 *ab, u64 *ib, uint32_t bpp);
+
+
 #define MDP3_REG_WRITE(addr, val) writel_relaxed(val, mdp3_res->mdp_base + addr)
 #define MDP3_REG_READ(addr) readl_relaxed(mdp3_res->mdp_base + addr)
 #define VBIF_REG_WRITE(off, val) writel_relaxed(val, mdp3_res->vbif_base + off)
