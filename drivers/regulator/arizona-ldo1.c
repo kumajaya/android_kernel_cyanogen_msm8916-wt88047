@@ -116,8 +116,6 @@ static struct regulator_ops arizona_ldo1_hc_ops = {
 	.map_voltage = arizona_ldo1_hc_map_voltage,
 	.get_voltage_sel = arizona_ldo1_hc_get_voltage_sel,
 	.set_voltage_sel = arizona_ldo1_hc_set_voltage_sel,
-	.get_bypass = regulator_get_bypass_regmap,
-	.set_bypass = regulator_set_bypass_regmap,
 };
 
 static const struct regulator_desc arizona_ldo1_hc = {
