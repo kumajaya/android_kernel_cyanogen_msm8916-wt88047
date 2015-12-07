@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 
+#undef _HFI_PACKETIZATION_
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
