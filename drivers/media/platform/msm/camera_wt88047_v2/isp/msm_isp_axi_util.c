@@ -616,11 +616,8 @@ int msm_isp_request_axi_stream(struct vfe_device *vfe_dev, void *arg)
 	}
 
 	msm_isp_calculate_framedrop(&vfe_dev->axi_data, stream_cfg_cmd);
-	stream_info->vt_enable = stream_cfg_cmd->vt_enable;
-	axi_data->burst_len = stream_cfg_cmd->burst_len;
-
-	if (stream_info->vt_enable) {
-		vfe_dev->vt_enable = stream_info->vt_enable;
+	if (stream_cfg_cmd->vt_enable && !vfe_dev->vt_enable) {
+		vfe_dev->vt_enable = stream_cfg_cmd->vt_enable;
 		msm_isp_start_avtimer();
 	}
 	if (stream_info->num_planes > 1) {
