@@ -3735,14 +3735,10 @@ CONFIG_CRYPTO_SHA512_ARM_NEON=y
 #
 CONFIG_CRYPTO_AES=y
 CONFIG_CRYPTO_AES_ARM=y
-<<<<<<< HEAD
 CONFIG_CRYPTO_AES_ARM_BS=y
-=======
->>>>>>> 53522f3... fix : camera headerpaths.. and remove useless function from simple ondemand.
 # CONFIG_CRYPTO_ANUBIS is not set
 CONFIG_CRYPTO_ARC4=y
-# CONFIG_CRYPTO_BLOWFISH is not set
-# CONFIG_CRYPTO_CAMELLIA is not set
+-# CONFIG_CRYPTO_CAMELLIA is not set
 # CONFIG_CRYPTO_CAST5 is not set
 # CONFIG_CRYPTO_CAST6 is not set
 CONFIG_CRYPTO_DES=y
