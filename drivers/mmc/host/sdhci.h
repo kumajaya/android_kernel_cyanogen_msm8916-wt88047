@@ -302,6 +302,8 @@ struct sdhci_ops {
 	void	(*platform_reset_exit)(struct sdhci_host *host, u8 mask);
 	int	(*set_uhs_signaling)(struct sdhci_host *host, unsigned int uhs);
 	void	(*hw_reset)(struct sdhci_host *host);
+	int	(*select_drive_strength)(struct sdhci_host *host,
+					 int host_drv, int card_drv);
 	void	(*platform_suspend)(struct sdhci_host *host);
 	void	(*platform_resume)(struct sdhci_host *host);
 	void    (*adma_workaround)(struct sdhci_host *host, u32 intmask);
@@ -321,6 +323,7 @@ struct sdhci_ops {
 					  bool enable,
 					  u32 type);
 	int	(*enable_controller_clock)(struct sdhci_host *host);
+	void	(*reset_workaround)(struct sdhci_host *host, u32 enable);
 };
 
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS

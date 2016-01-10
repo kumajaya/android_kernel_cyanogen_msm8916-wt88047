@@ -79,6 +79,8 @@ static const struct mmc_fixup mmc_fixups[] = {
 	 */
 	MMC_FIXUP("H8G2d", CID_MANFID_HYNIX, CID_OEMID_ANY, add_quirk_mmc,
 		  MMC_QUIRK_CACHE_DISABLE),
+	MMC_FIXUP("HAG2e", CID_MANFID_HYNIX, CID_OEMID_ANY, add_quirk_mmc,
+		  MMC_QUIRK_CACHE_DISABLE),
 	MMC_FIXUP(CID_NAME_ANY, CID_MANFID_NUMONYX_MICRON, CID_OEMID_ANY,
 		add_quirk_mmc, MMC_QUIRK_CACHE_DISABLE),
 	MMC_FIXUP("MMC16G", CID_MANFID_KINGSTON, CID_OEMID_ANY, add_quirk_mmc,
@@ -360,8 +362,6 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 	card->ext_csd.raw_card_type = ext_csd[EXT_CSD_CARD_TYPE];
 	mmc_select_card_type(card);
 
-	card->ext_csd.raw_drive_strength = ext_csd[EXT_CSD_DRIVE_STRENGTH];
-
 	card->ext_csd.raw_s_a_timeout = ext_csd[EXT_CSD_S_A_TIMEOUT];
 	card->ext_csd.raw_erase_timeout_mult =
 		ext_csd[EXT_CSD_ERASE_TIMEOUT_MULT];
@@ -561,6 +561,9 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 				"rpmb", 0, false,
 				MMC_BLK_DATA_AREA_RPMB);
 		}
+
+		/* Handle the CID year roll-over. */
+		card->cid.year += 16;
 	}
 
 	card->ext_csd.raw_erased_mem_count = ext_csd[EXT_CSD_ERASED_MEM_CONT];
@@ -602,10 +605,43 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 			ext_csd[EXT_CSD_MAX_PACKED_WRITES];
 		card->ext_csd.max_packed_reads =
 			ext_csd[EXT_CSD_MAX_PACKED_READS];
+		card->ext_csd.raw_drive_strength =
+			ext_csd[EXT_CSD_DRIVE_STRENGTH];
 	} else {
 		card->ext_csd.data_sector_size = 512;
 	}
 
+	/* eMMC v4.5 or later */
+	if (card->ext_csd.rev >= 7) {
+		card->ext_csd.firmware_version[0] =
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 0] << 0 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 1] << 8 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 2] << 16 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 3] << 24;
+		card->ext_csd.firmware_version[1] =
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 4] << 0 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 5] << 8 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 6] << 16 |
+			ext_csd[EXT_CSD_FIRMWARE_VERSION + 7] << 24;
+		card->ext_csd.device_version =
+			ext_csd[EXT_CSD_DEVICE_VERSION + 0] << 0 |
+			ext_csd[EXT_CSD_DEVICE_VERSION + 1] << 8;
+		card->ext_csd.raw_optimal_trim_size =
+			ext_csd[EXT_CSD_OPTIMAL_TRIM_UNIT_SIZE];
+		card->ext_csd.raw_optimal_write_size =
+			ext_csd[EXT_CSD_OPTIMAL_WRITE_SIZE];
+		card->ext_csd.raw_optimal_read_size =
+			ext_csd[EXT_CSD_OPTIMAL_READ_SIZE];
+		card->ext_csd.pre_eol_info =
+			ext_csd[EXT_CSD_PRE_EOL_INFO];
+		card->ext_csd.dev_life_time_est_a =
+			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A];
+		card->ext_csd.dev_life_time_est_b =
+			ext_csd[EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B];
+		memcpy(card->ext_csd.vendor_health_report,
+		       &ext_csd[EXT_CSD_VENDOR_PROPRIETARY_HEALTH_REPORT],
+		       sizeof(card->ext_csd.vendor_health_report));
+	}
 out:
 	return err;
 }
@@ -693,6 +729,28 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu\n",
 MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
 MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
 MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+MMC_DEV_ATTR(firmware_version, "0x%08x%08x\n",
+	card->ext_csd.firmware_version[1], card->ext_csd.firmware_version[0]);
+MMC_DEV_ATTR(device_version, "0x%04x\n", card->ext_csd.device_version);
+MMC_DEV_ATTR(optimal_trim_unit_size, "%d\n",
+		card->ext_csd.raw_optimal_trim_size);
+MMC_DEV_ATTR(optimal_write_size, "%d\n", card->ext_csd.raw_optimal_write_size);
+MMC_DEV_ATTR(optimal_read_size, "%d\n", card->ext_csd.raw_optimal_read_size);
+MMC_DEV_ATTR(pre_eol_info, "%d\n", card->ext_csd.pre_eol_info);
+MMC_DEV_ATTR(device_life_time_est_typ_a, "%d\n",
+		card->ext_csd.dev_life_time_est_a);
+MMC_DEV_ATTR(device_life_time_est_typ_b, "%d\n",
+		card->ext_csd.dev_life_time_est_b);
+MMC_DEV_ATTR(vendor_proprietary_health_report,
+		"%08x%08x%08x%08x%08x%08x%08x%08x\n",
+		card->ext_csd.vendor_health_report[0],
+		card->ext_csd.vendor_health_report[1],
+		card->ext_csd.vendor_health_report[2],
+		card->ext_csd.vendor_health_report[3],
+		card->ext_csd.vendor_health_report[4],
+		card->ext_csd.vendor_health_report[5],
+		card->ext_csd.vendor_health_report[6],
+		card->ext_csd.vendor_health_report[7]);
 
 static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_cid.attr,
@@ -711,6 +769,15 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_enhanced_area_size.attr,
 	&dev_attr_raw_rpmb_size_mult.attr,
 	&dev_attr_rel_sectors.attr,
+	&dev_attr_firmware_version.attr,
+	&dev_attr_device_version.attr,
+	&dev_attr_optimal_trim_unit_size.attr,
+	&dev_attr_optimal_write_size.attr,
+	&dev_attr_optimal_read_size.attr,
+	&dev_attr_pre_eol_info.attr,
+	&dev_attr_device_life_time_est_typ_a.attr,
+	&dev_attr_device_life_time_est_typ_b.attr,
+	&dev_attr_vendor_proprietary_health_report.attr,
 	NULL,
 };
 
@@ -912,7 +979,8 @@ static int mmc_select_hs(struct mmc_card *card, u8 *ext_csd)
 	}
 
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				EXT_CSD_HS_TIMING, 1,
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HIGH_SPEED,
 				card->ext_csd.generic_cmd6_time);
 
 	if (err && err != -EBADMSG)
@@ -1006,6 +1074,73 @@ out:
 }
 
 /*
+ * eMMC v4.5 added 4 driver strengths for HS200, matching those for UHS-I in
+ * the SD v3.0 specification.  Functionally, eMMC and SD driver types map as:
+ *
+ *   SD   eMMC   Impedance   Relative Drive
+ *   A    1      33 ohms     x1.5
+ *   B    0      50 ohms     x1    (default)
+ *   C    2      66 ohms     x0.75
+ *   D    3      100 ohms    x0.5
+ *
+ * eMMC v5.0 spec adds one additional type for which there is no corresponding
+ * SD type:
+ *
+ *   Type 4 - 40 ohms, x1.2
+ */
+static int mmc_select_driver_type(struct mmc_card *card)
+{
+	int host_drv_type = MMC_DRIVER_TYPE_0;
+	int card_drv_type = MMC_DRIVER_TYPE_0;
+	int drv_type;
+
+	/*
+	 * We reuse the SD-derived capability bits here.  If the host doesn't
+	 * support any of the Driver Types 1, 2 or 3, or there is no board
+	 * specific handler then default Driver Type 0 is used.
+	 */
+	if (!(card->host->caps & (MMC_CAP_DRIVER_TYPE_A | MMC_CAP_DRIVER_TYPE_C
+	    | MMC_CAP_DRIVER_TYPE_D)) &&
+	    !(card->host->caps2 & MMC_CAP2_DRIVER_TYPE_4))
+		return 0;
+
+	if (!card->host->ops->select_drive_strength)
+		return 0;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_A)
+		host_drv_type |= MMC_DRIVER_TYPE_1;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_C)
+		host_drv_type |= MMC_DRIVER_TYPE_2;
+
+	if (card->host->caps & MMC_CAP_DRIVER_TYPE_D)
+		host_drv_type |= MMC_DRIVER_TYPE_3;
+
+	if (card->host->caps2 & MMC_CAP2_DRIVER_TYPE_4)
+		host_drv_type |= MMC_DRIVER_TYPE_4;
+
+	card_drv_type |= card->ext_csd.raw_drive_strength &
+			 (MMC_DRIVER_TYPE_1 | MMC_DRIVER_TYPE_2 |
+			  MMC_DRIVER_TYPE_3 | MMC_DRIVER_TYPE_4);
+
+	/*
+	 * Card drive strength depends on the board design.  Let the host
+	 * driver decide what driver strength is best, based on all of the
+	 * constraints.
+	 */
+	mmc_host_clk_hold(card->host);
+	drv_type = card->host->ops->select_drive_strength(card->host,
+		host_drv_type, card_drv_type);
+	mmc_host_clk_release(card->host);
+
+	pr_debug("%s: %s: %d\n", mmc_hostname(card->host), __func__, drv_type);
+	/* We send the driver type as part of the HS_TIMING command. */
+	card->ext_csd.drv_type = drv_type;
+
+	return 0;
+}
+
+/*
  * Select the desired buswidth and switch to HS200 mode
  * if bus width set without error
  */
@@ -1056,9 +1191,14 @@ static int mmc_select_hs200(struct mmc_card *card, u8 *ext_csd)
 		goto out;
 	}
 
+	mmc_select_driver_type(card);
+
 	/* switch to HS200 mode if bus width set successfully */
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				EXT_CSD_HS_TIMING, 2, 0);
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HS200 |
+				(card->ext_csd.drv_type << 4),
+				0);
 
 	if (err && err != -EBADMSG) {
 		pr_err("%s: HS200 switch failed\n",
@@ -1161,7 +1301,10 @@ static int mmc_select_hs400(struct mmc_card *card, u8 *ext_csd)
 
 	/* Switch to HS400 mode if bus width set successfully */
 	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-				 EXT_CSD_HS_TIMING, 3, 0);
+				EXT_CSD_HS_TIMING,
+				EXT_CSD_HS_TIMING_HS400 |
+				(card->ext_csd.drv_type << 4),
+				0);
 	if (err && err != -EBADMSG) {
 		pr_err("%s: Setting HS_TIMING to HS400 failed (err:%d)\n",
 			mmc_hostname(host), err);

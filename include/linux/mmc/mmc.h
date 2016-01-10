@@ -271,6 +271,15 @@ struct _mmc_csd {
 #define EXT_CSD_GENERIC_CMD6_TIME	248	/* RO */
 #define EXT_CSD_CACHE_SIZE		249	/* RO, 4 bytes */
 #define EXT_CSD_PWR_CL_DDR_200_360	253	/* RO */
+#define EXT_CSD_FIRMWARE_VERSION	254	/* RO, 8 bytes */
+#define EXT_CSD_DEVICE_VERSION		262	/* RO, 2 bytes */
+#define EXT_CSD_OPTIMAL_TRIM_UNIT_SIZE	264	/* RO */
+#define EXT_CSD_OPTIMAL_WRITE_SIZE	265	/* RO */
+#define EXT_CSD_OPTIMAL_READ_SIZE	266	/* RO */
+#define EXT_CSD_PRE_EOL_INFO		267	/* RO */
+#define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A 268	/* RO */
+#define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B 269	/* RO */
+#define EXT_CSD_VENDOR_PROPRIETARY_HEALTH_REPORT 270	/* RO, 32 bytes */
 #define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
 #define EXT_CSD_DATA_TAG_SUPPORT	499	/* RO */
 #define EXT_CSD_MAX_PACKED_WRITES	500	/* RO */
@@ -320,6 +329,10 @@ struct _mmc_csd {
 							/* DDR mode @1.2V I/O */
 #define EXT_CSD_CARD_TYPE_HS400		(EXT_CSD_CARD_TYPE_HS400_1_8V  \
 					| EXT_CSD_CARD_TYPE_HS400_1_2V)
+
+#define EXT_CSD_HS_TIMING_HIGH_SPEED	1
+#define EXT_CSD_HS_TIMING_HS200		2
+#define EXT_CSD_HS_TIMING_HS400		3
 
 #define EXT_CSD_BUS_WIDTH_1	0	/* Card is in 1 bit mode */
 #define EXT_CSD_BUS_WIDTH_4	1	/* Card is in 4 bit mode */

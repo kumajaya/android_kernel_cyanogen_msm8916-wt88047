@@ -15,7 +15,6 @@
 #include <linux/sched.h>
 #include <linux/device.h>
 #include <linux/fault-inject.h>
-#include <linux/wakelock.h>
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
@@ -82,6 +81,7 @@ struct mmc_ios {
 #define MMC_SET_DRIVER_TYPE_A	1
 #define MMC_SET_DRIVER_TYPE_C	2
 #define MMC_SET_DRIVER_TYPE_D	3
+#define MMC_SET_DRIVER_TYPE_4	4		/* eMMC only */
 };
 
 /* states to represent load on the host */
@@ -147,7 +147,8 @@ struct mmc_host_ops {
 
 	/* The tuning command opcode value is different for SD and eMMC cards */
 	int	(*execute_tuning)(struct mmc_host *host, u32 opcode);
-	int	(*select_drive_strength)(unsigned int max_dtr, int host_drv, int card_drv);
+	int	(*select_drive_strength)(struct mmc_host *host,
+					 int host_drv, int card_drv);
 	void	(*hw_reset)(struct mmc_host *host);
 	void	(*card_event)(struct mmc_host *host);
 	unsigned long (*get_max_frequency)(struct mmc_host *host);
@@ -193,6 +194,7 @@ struct mmc_slot {
 	int cd_irq;
 	struct mutex lock;
 	void *handler_priv;
+	int (*get_cd) (struct mmc_host *host);
 };
 
 /**
@@ -288,9 +290,9 @@ struct mmc_host {
 #define MMC_CAP_UHS_SDR50	(1 << 17)	/* Host supports UHS SDR50 mode */
 #define MMC_CAP_UHS_SDR104	(1 << 18)	/* Host supports UHS SDR104 mode */
 #define MMC_CAP_UHS_DDR50	(1 << 19)	/* Host supports UHS DDR50 mode */
-#define MMC_CAP_DRIVER_TYPE_A	(1 << 23)	/* Host supports Driver Type A */
-#define MMC_CAP_DRIVER_TYPE_C	(1 << 24)	/* Host supports Driver Type C */
-#define MMC_CAP_DRIVER_TYPE_D	(1 << 25)	/* Host supports Driver Type D */
+#define MMC_CAP_DRIVER_TYPE_A	(1 << 23)	/* Host supports SD Driver Type A (eMMC Type 1) */
+#define MMC_CAP_DRIVER_TYPE_C	(1 << 24)	/* Host supports SD Driver Type C (eMMC Type 2) */
+#define MMC_CAP_DRIVER_TYPE_D	(1 << 25)	/* Host supports SD Driver Type D (eMMC Type 3) */
 #define MMC_CAP_CMD23		(1 << 30)	/* CMD23 supported. */
 #define MMC_CAP_HW_RESET	(1 << 31)	/* Hardware reset */
 
@@ -331,6 +333,10 @@ struct mmc_host {
 #define MMC_CAP2_HS400		(MMC_CAP2_HS400_1_8V | \
 				 MMC_CAP2_HS400_1_2V)
 #define MMC_CAP2_NONHOTPLUG	(1 << 25)	/*Don't support hotplug*/
+#define MMC_CAP2_SD_ONLY	(1 << 29)	/* Host can only be attached to an SD card */
+#define MMC_CAP2_MMC_ONLY	(1 << 30)	/* Host can only be attached to an MMC card */
+#define MMC_CAP2_DRIVER_TYPE_4	(1 << 31)	/* Host supports eMMC Driver Type 4 */
+
 	mmc_pm_flag_t		pm_caps;	/* supported pm features */
 
 	int			clk_requests;	/* internal reference counter */
@@ -365,6 +371,7 @@ struct mmc_host {
 #ifdef CONFIG_MMC_DEBUG
 	unsigned int		removed:1;	/* host is being removed */
 #endif
+	unsigned int		card_bad:1;	/* the card is bad; ignore it */
 
 	int			rescan_disable;	/* disable card detection */
 	int			rescan_entered;	/* used with nonremovable devices */
@@ -377,8 +384,8 @@ struct mmc_host {
 	int			claim_cnt;	/* "claim" nesting count */
 
 	struct delayed_work	detect;
-	struct wake_lock	detect_wake_lock;
-	const char		*wlock_name;
+	struct wakeup_source	detect_ws;
+	const char		*detect_ws_name;
 	int			detect_change;	/* card detect flag */
 	struct mmc_slot		slot;
 
@@ -436,6 +443,29 @@ struct mmc_host {
 	} perf;
 	bool perf_enable;
 #endif
+
+#ifdef CONFIG_MMC_CMD_LOG
+	unsigned int		mmc_cmd_log_mode;
+#define MMC_CMD_LOG_MODE_EN		(1 << 0)
+#define MMC_CMD_LOG_MODE_RESP		(1 << 1)
+#define MMC_CMD_LOG_MODE_TIME		(1 << 2)
+#define MMC_CMD_LOG_MODE_LATENCY	(1 << 3)
+#define MMC_CMD_LOG_MODE_FORCE_DUMP	(1 << 7)
+
+	unsigned int		mmc_cmd_log_recsize;
+#define MMC_CMD_LOG_RECSIZE_BASE	2  /* base record size */
+#define MMC_CMD_LOG_RECSIZE_RESP	1  /* command responses */
+#define MMC_CMD_LOG_RECSIZE_TIME	1  /* one time stamp */
+#define MMC_CMD_LOG_RECSIZE_LATENCY	1  /* a second time stamp */
+
+	unsigned int		mmc_cmd_log_flags;
+#define MMC_CMD_LOG_FLAG_RESP		(1 << 0)  /* response is pending */
+
+	int			mmc_cmd_log_idx;
+	int			mmc_cmd_log_len;
+
+	u32			*mmc_cmd_log;
+#endif
 	struct {
 		unsigned long	busy_time_us;
 		unsigned long	window_time;
@@ -458,6 +488,10 @@ struct mmc_host {
 	 * actually disabling the clock from it's source.
 	 */
 	bool			card_clock_off;
+
+	unsigned long long	requests;	/* cumulative number of requests */
+	unsigned long long	request_errors;	/* cumulative number of request errors */
+
 	unsigned long		private[0] ____cacheline_aligned;
 };
 
@@ -623,6 +657,57 @@ static inline int mmc_use_core_runtime_pm(struct mmc_host *host)
 static inline int mmc_use_core_pm(struct mmc_host *host)
 {
 	return host->caps2 & MMC_CAP2_CORE_PM;
+}
+
+#ifdef CONFIG_MMC_CMD_LOG
+int mmc_cmd_log_size(struct mmc_host *, unsigned int);
+int mmc_cmd_log_config(struct mmc_host *, unsigned int);
+void mmc_cmd_log_dump(struct mmc_host *);
+void _mmc_cmd_log(struct mmc_host *, u32, u32);
+void _mmc_cmd_log_resp(struct mmc_host *, u32);
+static inline void mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
+{
+	if (!(host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_EN) ||
+	    !host->mmc_cmd_log)
+		return;
+	_mmc_cmd_log(host, cmd, arg);
+}
+static inline void mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
+{
+	if (!(host->mmc_cmd_log_mode & MMC_CMD_LOG_MODE_EN) ||
+	    !host->mmc_cmd_log)
+		return;
+	_mmc_cmd_log_resp(host, resp);
+}
+#else
+static inline int mmc_cmd_log_size(struct mmc_host *host , unsigned int size)
+{
+	return 0;
+}
+static inline int mmc_cmd_log_config(struct mmc_host *host, unsigned int mode)
+{
+	return 0;
+}
+static inline void mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
+{
+}
+static inline void mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
+{
+}
+static inline void mmc_cmd_log_dump(struct mmc_host *host)
+{
+}
+#endif
+static inline int mmc_cmd_log_init(struct mmc_host *host, unsigned int size,
+				   unsigned int config)
+{
+	int rc;
+
+	rc = mmc_cmd_log_config(host, config);
+	if (!rc)
+		rc = mmc_cmd_log_size(host, size);
+
+	return rc;
 }
 
 #endif /* LINUX_MMC_HOST_H */

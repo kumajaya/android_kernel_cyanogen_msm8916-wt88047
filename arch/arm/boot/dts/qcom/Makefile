@@ -71,7 +71,8 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-sim.dtb \
 	apq8009w-wtp.dtb \
 	apq8009w-cdp.dtb \
 	apq8009-mtp-wcd9326.dtb \
-	msm8909-mtp-wcd9326.dtb
+	msm8909-mtp-wcd9326.dtb \
+	msm8909-mtp-wcd9326-refboard.dtb
 
 ifeq ($(CONFIG_MACH_CKT_MSM8939),y)
 dtb-$(CONFIG_ARCH_MSM8916) += msm8939-spirit.dtb
@@ -79,6 +80,8 @@ else ifeq ($(CONFIG_MACH_HAIER_MSM8916),y)
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-g36c1h.dtb
 else ifeq ($(CONFIG_MACH_LONGCHEER_MSM8916),y)
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-qrd-l8150.dtb
+else ifeq ($(CONFIG_MACH_WINGTECH_MSM8916),y)
+dtb-$(CONFIG_ARCH_MSM8916) += msm8916-wt88047.dtb
 else
 dtb-$(CONFIG_ARCH_MSM8916) += msm8916-cdp.dtb \
 	msm8916-cdp-smb1360.dtb \
