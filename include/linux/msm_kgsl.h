@@ -21,6 +21,10 @@
 #define KGSL_3D0_SHADER_MEMORY	"kgsl_3d0_shader_memory"
 #define KGSL_3D0_IRQ		"kgsl_3d0_irq"
 
+#ifdef CONFIG_CPU_FREQ_GOV_ELEMENTALX
+extern int graphics_boost;
+#endif
+
 /**
  * struct kgsl_pwrlevel - Struct holding different pwrlevel info obtained from
  * from dtsi file
