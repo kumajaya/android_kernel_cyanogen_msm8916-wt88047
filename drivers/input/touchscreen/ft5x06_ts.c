@@ -240,7 +240,7 @@ enum {
 #define FT_DEBUG_DIR_NAME	"ts_debug"
 
 #ifdef CONFIG_MACH_WT88047
-#define CTP_CHARGER_DETECT 1
+#define CTP_CHARGER_DETECT 0
 #endif
 
 #if CTP_CHARGER_DETECT
@@ -2704,3 +2704,4 @@ module_exit(ft5x06_ts_exit);
 
 MODULE_DESCRIPTION("FocalTech ft5x06 TouchScreen driver");
 MODULE_LICENSE("GPL v2");
+

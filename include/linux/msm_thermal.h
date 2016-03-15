@@ -146,7 +146,7 @@ struct device_clnt_data {
 	void                         *usr_data;
 };
 
-#ifdef CONFIG_THERMAL_MONITOR
+#if defined (CONFIG_THERMAL_MONITOR) || defined (CONFIG_INTELLI_THERMAL)
 extern int msm_thermal_init(struct msm_thermal_data *pdata);
 extern int msm_thermal_device_init(void);
 extern int msm_thermal_set_frequency(uint32_t cpu, uint32_t freq,
@@ -175,8 +175,7 @@ extern int msm_thermal_get_cluster_freq_plan(uint32_t cluster,
  * on failure. MACRO IS_HI_THRESHOLD_SET/IS_LOW_THRESHOLD_SET can be used
  * to decipher which threshold being set.
  */
-extern int sensor_mgr_init_threshold(struct device *dev,
-				struct threshold_info *thresh_inp,
+extern int sensor_mgr_init_threshold(struct threshold_info *thresh_inp,
 				int sensor_id, int32_t high_temp,
 				int32_t low_temp,
 				void (*callback)(struct therm_threshold *));
@@ -210,8 +209,7 @@ extern int sensor_mgr_set_threshold(uint32_t zone_id,
  * @dev: Client device structure.
  * @thresh_inp: The threshold info which needs to be removed.
  */
-extern void sensor_mgr_remove_threshold(struct device *dev,
-				struct threshold_info *thresh_inp);
+extern void sensor_mgr_remove_threshold(struct threshold_info *thresh_inp);
 /**
  * devmgr_register_mitigation_client - Register for a device and
  *                                     gets a handle for mitigation.

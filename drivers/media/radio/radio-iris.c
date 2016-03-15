@@ -5221,6 +5221,19 @@ static int iris_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 	struct iris_device *radio = video_get_drvdata(video_devdata(file));
 	int dir;
 
+	int retval = 0;
+	int saved_val;
+	retval = hci_cmd(HCI_FM_GET_DET_CH_TH_CMD, radio->fm_hdev);
+	if (retval < 0)
+		FMDERR("zxd Failed to get chnl det thresholds  %d", retval);
+	saved_val = 8;
+	radio->ch_det_threshold.sinr = 8;
+	retval = hci_set_ch_det_thresholds_req(&radio->ch_det_threshold,
+							 radio->fm_hdev);
+	if (retval < 0) {
+			FMDERR("zxd Failed to set SINR threshold %d", retval);
+			radio->ch_det_threshold.sinr = saved_val;
+	}
 	if (seek == NULL) {
 		FMDERR("%s, v4l2_hw_freq_seek is null\n", __func__);
 		return -EINVAL;

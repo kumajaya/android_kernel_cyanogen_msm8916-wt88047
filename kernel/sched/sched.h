@@ -380,6 +380,9 @@ struct root_domain {
 	cpumask_var_t span;
 	cpumask_var_t online;
 
+	/* Indicate more than one runnable task for any CPU */
+	bool overload;
+
 	/*
 	 * The "RT overload" flag: it gets set if a CPU has more than
 	 * one runnable RT task.
@@ -419,6 +422,11 @@ struct rq {
 	unsigned long last_sched_tick;
 #endif
 	int skip_clock_update;
+
+	/* time-based average load */
+	u64 nr_last_stamp;
+	unsigned int ave_nr_running;
+	seqcount_t ave_seqcnt;
 
 	/* capture load from *all* tasks on this cpu: */
 	struct load_weight load;
@@ -577,6 +585,22 @@ DECLARE_PER_CPU(struct rq, runqueues);
 #define task_rq(p)		cpu_rq(task_cpu(p))
 #define cpu_curr(cpu)		(cpu_rq(cpu)->curr)
 #define raw_rq()		(&__raw_get_cpu_var(runqueues))
+
+#ifdef CONFIG_INTELLI_HOTPLUG
+struct nr_stats_s {
+	/* time-based average load */
+	u64 nr_last_stamp;
+	unsigned int ave_nr_running;
+	seqcount_t ave_seqcnt;
+};
+
+#define NR_AVE_PERIOD_EXP	28
+#define NR_AVE_SCALE(x)		((x) << FSHIFT)
+#define NR_AVE_PERIOD		(1 << NR_AVE_PERIOD_EXP)
+#define NR_AVE_DIV_PERIOD(x)	((x) >> NR_AVE_PERIOD_EXP)
+
+DECLARE_PER_CPU(struct nr_stats_s, runqueue_stats);
+#endif
 
 #ifdef CONFIG_SMP
 
@@ -1327,26 +1351,74 @@ static inline u64 steal_ticks(u64 steal)
 }
 #endif
 
+#ifdef CONFIG_INTELLI_HOTPLUG
+static inline unsigned int do_avg_nr_running(struct rq *rq)
+{
+
+	struct nr_stats_s *nr_stats = &per_cpu(runqueue_stats, rq->cpu);
+	unsigned int ave_nr_running = nr_stats->ave_nr_running;
+	s64 nr, deltax;
+
+	deltax = rq->clock_task - nr_stats->nr_last_stamp;
+	nr = NR_AVE_SCALE(rq->nr_running);
+
+	if (deltax > NR_AVE_PERIOD)
+		ave_nr_running = nr;
+	else
+		ave_nr_running +=
+			NR_AVE_DIV_PERIOD(deltax * (nr - ave_nr_running));
+
+	return ave_nr_running;
+}
+#endif
+
 static inline void inc_nr_running(struct rq *rq)
 {
+#ifdef CONFIG_INTELLI_HOTPLUG
+	struct nr_stats_s *nr_stats = &per_cpu(runqueue_stats, rq->cpu);
+#endif
 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, true);
+#ifdef CONFIG_INTELLI_HOTPLUG
+	write_seqcount_begin(&nr_stats->ave_seqcnt);
+	nr_stats->ave_nr_running = do_avg_nr_running(rq);
+	nr_stats->nr_last_stamp = rq->clock_task;
+#endif
 	rq->nr_running++;
+#ifdef CONFIG_INTELLI_HOTPLUG
+	write_seqcount_end(&nr_stats->ave_seqcnt);
+#endif
+
+	if (rq->nr_running == 2) {
+#ifdef CONFIG_SMP
+		if (!rq->rd->overload)
+			rq->rd->overload = true;
+#endif
 
 #ifdef CONFIG_NO_HZ_FULL
-	if (rq->nr_running == 2) {
 		if (tick_nohz_full_cpu(rq->cpu)) {
 			/* Order rq->nr_running write against the IPI */
 			smp_wmb();
 			smp_send_reschedule(rq->cpu);
 		}
-       }
-#endif
+#endif	
+	}
 }
 
 static inline void dec_nr_running(struct rq *rq)
 {
+#ifdef CONFIG_INTELLI_HOTPLUG
+	struct nr_stats_s *nr_stats = &per_cpu(runqueue_stats, rq->cpu);
+#endif
 	sched_update_nr_prod(cpu_of(rq), rq->nr_running, false);
+#ifdef CONFIG_INTELLI_HOTPLUG
+	write_seqcount_begin(&nr_stats->ave_seqcnt);
+	nr_stats->ave_nr_running = do_avg_nr_running(rq);
+	nr_stats->nr_last_stamp = rq->clock_task;
+#endif
 	rq->nr_running--;
+#ifdef CONFIG_INTELLI_HOTPLUG
+	write_seqcount_end(&nr_stats->ave_seqcnt);
+#endif
 }
 
 static inline void rq_last_tick_reset(struct rq *rq)
@@ -1637,3 +1709,4 @@ static inline u64 irq_time_read(int cpu)
 }
 #endif /* CONFIG_64BIT */
 #endif /* CONFIG_IRQ_TIME_ACCOUNTING */
+

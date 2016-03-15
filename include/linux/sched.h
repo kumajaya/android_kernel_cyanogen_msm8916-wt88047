@@ -162,6 +162,10 @@ extern unsigned long nr_running(void);
 extern unsigned long nr_iowait(void);
 extern unsigned long nr_iowait_cpu(int cpu);
 extern unsigned long this_cpu_load(void);
+#ifdef CONFIG_INTELLI_HOTPLUG
+extern unsigned long avg_nr_running(void);
+extern unsigned long avg_cpu_nr_running(unsigned int cpu);
+#endif
 
 extern void sched_update_nr_prod(int cpu, unsigned long nr, bool inc);
 extern void sched_get_nr_running_avg(int *avg, int *iowait_avg);
@@ -2114,6 +2118,7 @@ extern int task_nice(const struct task_struct *p);
 extern int can_nice(const struct task_struct *p, const int nice);
 extern int task_curr(const struct task_struct *p);
 extern int idle_cpu(int cpu);
+extern int idle_cpu_relaxed(int cpu);
 extern int sched_setscheduler(struct task_struct *, int,
 			      const struct sched_param *);
 extern int sched_setscheduler_nocheck(struct task_struct *, int,

@@ -428,6 +428,7 @@ config PHYS_OFFSET
 	hex
 	default "0x00000000" if ARCH_MSM8974
 	default "0x00000000" if ARCH_APQ8084
+	default "0x80000000" if ARCH_MSM8916
 	default "0x00000000" if ARCH_MSM8226
 	default "0x00000000" if ARCH_MSM8610
 	default "0x0b600000" if ARCH_FSM9900
@@ -1040,6 +1041,13 @@ config MSM_PP2S_FEMTO
 	  Select Y if you want this notification to manifest.
 	  If unsure, select N.
 
+config FORCE_FAST_CHARGE
+	bool "Force faster charge rate for AC/USB"
+	default y
+	help
+	  This allows users to override default charge rate for both USB and AC
+	  charger input current
+
 config FSM9900_GSM_NL
 	bool "FSM9900 GSM NL Hardware Support"
 	depends on ARCH_FSM9900
@@ -1050,4 +1058,10 @@ config FSM9900_GSM_NL
 	  The serial port connection can be established to communicate with the
 	  GSM NL module.
 
+config ALUCARD_HOTPLUG
+	bool "Enable alucard-hotplug cpu hotplug driver"
+	default y
+	help
+	  Alucard-hotplug cpu hotplug driver for ARM SOCs
+ 
 endif

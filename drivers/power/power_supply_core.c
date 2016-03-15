@@ -267,23 +267,19 @@ int power_supply_set_low_power_state(struct power_supply *psy, int value)
 }
 EXPORT_SYMBOL(power_supply_set_low_power_state);
 
-#ifdef CONFIG_MACH_WT88047
 int power_supply_get_battery_charge_state(struct power_supply *psy)
 {
 	union power_supply_propval ret = {0,};
 
-	if (!psy) {
-		pr_err("%s: power supply is NULL\n", __func__);
-		return 0;
-	}
+	if (!psy)
+		pr_err("power supply is NULL\n");
 
-	psy->get_property(psy, POWER_SUPPLY_PROP_ONLINE, &ret);
-	pr_debug("%s: online: %d\n", __func__, ret.intval);
-
+	if (psy->get_property)
+		psy->get_property(psy, POWER_SUPPLY_PROP_ONLINE, &ret);
+	pr_debug("online:%d\n", ret.intval);
 	return ret.intval;
 }
 EXPORT_SYMBOL(power_supply_get_battery_charge_state);
-#endif
 
 static int __power_supply_changed_work(struct device *dev, void *data)
 {
@@ -317,9 +313,7 @@ static void power_supply_changed_work(struct work_struct *work)
 		power_supply_update_leds(psy);
 
 		kobject_uevent(&psy->dev->kobj, KOBJ_CHANGE);
-#ifdef CONFIG_MACH_WT88047
-		msleep(100);
-#endif
+		msleep(100); 
 		spin_lock_irqsave(&psy->changed_lock, flags);
 	}
 	if (!psy->changed)
@@ -723,10 +717,59 @@ static void psy_unregister_cooler(struct power_supply *psy)
 }
 #endif
 
+static ssize_t show_StopCharging_Test(struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+	bool charging_enable = false;
+	struct power_supply *batt_psy = NULL;
+	int rc;
+
+	batt_psy = power_supply_get_by_name("battery");
+	if (batt_psy) {
+		rc = power_supply_set_charging_enabled(batt_psy, 0);
+		if (rc)
+			pr_err("disable charging failed\n");
+		pr_err("show_StopCharging_Test : %x success\n", charging_enable);
+	} else
+		pr_err("get battery power supply Error!!\n");
+
+	return sprintf(buf, "chr=%d\n", charging_enable);
+}
+static ssize_t store_StopCharging_Test(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	return -EPERM;
+}
+static DEVICE_ATTR(StopCharging_Test, 0664, show_StopCharging_Test, store_StopCharging_Test);
+
+static ssize_t show_StartCharging_Test(struct device *dev, struct device_attribute *attr, char *buf)
+{
+
+	bool charging_enable = true;
+	struct power_supply *batt_psy = NULL;
+	int rc;
+
+	batt_psy = power_supply_get_by_name("battery");
+	if (batt_psy) {
+		rc = power_supply_set_charging_enabled(batt_psy, 1);
+		if (rc)
+			pr_err("enable charging failed\n");
+		pr_err("show_StartCharging_Test : %x success\n", charging_enable);
+	} else
+		pr_err("get battery power supply Error!!\n");
+
+	return sprintf(buf, "chr=%d\n", charging_enable);
+}
+static ssize_t store_StartCharging_Test(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	return -EPERM;
+}
+static DEVICE_ATTR(StartCharging_Test, 0664, show_StartCharging_Test, store_StartCharging_Test);
+
 int power_supply_register(struct device *parent, struct power_supply *psy)
 {
 	struct device *dev;
 	int rc;
+	int ret_device_file = 0; 
 
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -775,6 +818,12 @@ int power_supply_register(struct device *parent, struct power_supply *psy)
 		goto create_triggers_failed;
 
 	power_supply_changed(psy);
+
+	if (strcmp(psy->name, "battery") == 0) {
+		pr_err("battery powe supply creat attr file!!\n");
+		ret_device_file = device_create_file(dev, &dev_attr_StopCharging_Test);
+		ret_device_file = device_create_file(dev, &dev_attr_StartCharging_Test);
+	}
 
 	goto success;
 

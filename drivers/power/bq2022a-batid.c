@@ -22,7 +22,7 @@
 #include <linux/thermal.h>
 #include <linux/platform_device.h>
 #include "bq2022a-batid.h"
-/* #include <linux/hardware_info.h> */
+#include <linux/hardware_info.h>
 
 /* BQ2022A. */
 #define	ROM_COMMAND		(0xcc)
@@ -289,7 +289,7 @@ static int bq2022a_probe(struct platform_device *pdev)
 		break;
 	}
 	pr_debug("battery module:%s", bat_id_buf);
-	/* hardwareinfo_set_prop(HARDWARE_BATTERY_ID, bat_id_buf); */
+	hardwareinfo_set_prop(HARDWARE_BATTERY_ID, bat_id_buf);
 	pr_err("success!!\n");
 
 	return rc;
@@ -318,3 +318,4 @@ module_platform_driver(bq2022a_driver);
 
 MODULE_DESCRIPTION("bq2022a-batid driver");
 MODULE_LICENSE("GPL");
+

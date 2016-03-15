@@ -1999,3 +1999,4 @@ int yas_attitude_filter_init(struct yas_attitude_filter *f);
 #endif
 
 #endif /* __YAS_H__ */
+

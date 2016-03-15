@@ -282,9 +282,25 @@ config CPU_PM
 	bool
 	depends on SUSPEND || CPU_IDLE
 
+config POWERSUSPEND
+	bool "Power suspend"
+	default y
+	---help---
+	  Call early suspend handlers when the user requested sleep state
+	  changes.
+
 config SUSPEND_TIME
 	bool "Log time spent in suspend"
 	---help---
 	  Prints the time spent in suspend in the kernel log, and
 	  keeps statistics on the time spent in suspend in
 	  /sys/kernel/debug/suspend_time
+
+
+config QUICK_WAKEUP
+	bool "Quick wakeup"
+	depends on SUSPEND
+	default y
+	---help---
+	  Allow kernel driver to do periodic jobs without resuming the full system
+	  This option can increase battery life on android powered smartphone.

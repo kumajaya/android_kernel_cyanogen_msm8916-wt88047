@@ -2317,3 +2317,4 @@ EXPORT_SYMBOL(wcd_mbhc_deinit);
 
 MODULE_DESCRIPTION("wcd MBHC v2 module");
 MODULE_LICENSE("GPL v2");
+

@@ -20,7 +20,7 @@ endif
 
 OBJCOPYFLAGS	:=-O binary -R .comment -S
 GZFLAGS		:=-9
-#KBUILD_CFLAGS	+=-pipe
+KBUILD_CFLAGS	+=-pipe
 
 # Never generate .eh_frame
 KBUILD_CFLAGS	+= $(call cc-option,-fno-dwarf2-cfi-asm)
@@ -78,6 +78,10 @@ arch-$(CONFIG_CPU_32v3)		:=-D__LINUX_ARM_ARCH__=3 -march=armv3
 # doesn't even support -march=armv7-a, since in that situation we would have
 # bigger problems.
 arch-$(CONFIG_ARCH_MSM_KRAIT)	:=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-mcpu=cortex-a15,-march=armv7-a)
+
+# Redmi2 is 32 bit Cortex A53,tune accordingly and fallback on armv7-a
+arch-$(CONFIG_ARCH_MSM8916)	:=-D__LINUX_ARM_ARCH__=7 $(call cc-option,-mcpu=cortex-a53 -mtune=cortex-a53 -mfpu=neon-vfpv4,-march=armv7-a)
+
 
 # This selects how we optimise for the processor.
 tune-$(CONFIG_CPU_ARM7TDMI)	:=-mtune=arm7tdmi

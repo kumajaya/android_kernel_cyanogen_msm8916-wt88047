@@ -3333,3 +3333,4 @@ MODULE_DESCRIPTION("ALSA SoC msm");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:" DRV_NAME);
 MODULE_DEVICE_TABLE(of, msm8x16_asoc_machine_of_match);
+

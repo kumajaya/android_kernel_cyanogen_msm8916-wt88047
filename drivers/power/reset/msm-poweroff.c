@@ -63,7 +63,13 @@ static void *emergency_dload_mode_addr;
 static bool scm_dload_supported;
 
 static int dload_set(const char *val, struct kernel_param *kp);
+
+#ifdef WT_DLOAD_MODE_SUPPORT
 static int download_mode = 1;
+#else
+static int download_mode;
+#endif
+
 module_param_call(download_mode, dload_set, param_get_int,
 			&download_mode, 0644);
 static int panic_prep_restart(struct notifier_block *this,
@@ -266,6 +272,8 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
 			__raw_writel(0x77665503, restart_reason);
+		} else if (!strncmp(cmd, "fastmmi", 7)) {
+			__raw_writel(0x77665505, restart_reason);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			int ret;

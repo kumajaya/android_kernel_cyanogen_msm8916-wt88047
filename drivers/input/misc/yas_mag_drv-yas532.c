@@ -821,3 +821,4 @@ int yas_mag_driver_init(struct yas_mag_driver *f)
 	return YAS_NO_ERROR;
 }
 #endif
+
